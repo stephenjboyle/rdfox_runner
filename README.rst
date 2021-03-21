@@ -1,6 +1,6 @@
-============
-rdfox_runner
-============
+==============
+ rdfox_runner
+==============
 
 
 Set up and run `RDFox`_ scripts in a temporary directory.
@@ -29,6 +29,7 @@ Contributing 🎁
 
 Contributions are welcome: share examples of work done using it, make suggestions for improving the documentation, and examples of things that are more difficult than they should be or don't work -- as well as of course making actual fixes to code and documentation.
 
+See `DEVELOPING.rst <DEVELOPING.rst>`_ for more information.
 
 License
 =======
@@ -38,4 +39,4 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 `RDFox`_ is created by Oxford Semantic Technologies, who are not responsible for this project.
 
 .. _RDFox: https://www.oxfordsemantic.tech/product
-.. _documentation: TODO
+.. _documentation: https://rdfox-runner.readthedocs.io/en/latest/
