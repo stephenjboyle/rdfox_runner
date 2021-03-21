@@ -32,7 +32,7 @@ def test_http_server(test_files):
     command = ["python", "-u", "-m", "http.server", "8008"]
 
     with CommandRunner(input_files, command, shell=False):
-        time.sleep(0.1)
+        time.sleep(1)
         response = requests.get("http://localhost:8008/a.txt")
 
     assert response.text == "a"
