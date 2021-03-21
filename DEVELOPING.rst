@@ -27,3 +27,10 @@ To release a new version of rdfox_runner:
 - Publish the package to PyPI::
 
     poetry publish
+
+Tests
+=====
+
+Run the tests using pytest::
+
+    pytest
