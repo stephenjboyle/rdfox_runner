@@ -5,7 +5,7 @@ This aims to hide the complexity of setting up RDFox, loading data, adding
 rules, answering queries, behind a simple function that maps data -> answers.
 """
 
-import time
+import threading
 import logging
 from io import StringIO
 import re
@@ -37,9 +37,9 @@ class RDFoxRunner(RDFoxEndpoint):
     :param script: RDFox commands to run, either as a list of strings or a
         single string.
     :param namespaces: dict of RDFlib namespaces to bind
-    :param wait: whether to wait for RDFox to exit when starting.  If None, look
-        for the presence of an "endpoint start" command in `script` and wait if
-        not found.
+    :param wait: whether to wait for RDFox to start the endpoint or exit when
+        starting.  If None, look for the presence of an "endpoint start" command
+        in `script` and wait for the endpoint if found, wait for exit otherwise.
     :param working_dir: Path to setup command in, defaults to a temporary
         directory
     :param rdfox_executable: Path RDFox executable (default "RDFox")
@@ -50,7 +50,7 @@ class RDFoxRunner(RDFoxEndpoint):
             input_files: Mapping[str, PathOrIO],
             script: Union[List[str], str],
             namespaces: Optional[Mapping] = None,
-            wait: Union[bool, None] = None,
+            wait: Optional[str] = None,
             working_dir: Optional[StrPath] = None,
             rdfox_executable: Optional[StrPath] = None,
     ):
@@ -69,9 +69,11 @@ class RDFoxRunner(RDFoxEndpoint):
         if wait is None:
             # Try to choose a good default
             if "endpoint start" in script:
-                wait = False
+                wait = "endpoint"
             else:
-                wait = True
+                wait = "exit"
+        elif wait not in ("endpoint", "exit", "nothing"):
+            raise ValueError("wait must be 'endpoint' or 'exit' or 'nothing'")
         self.wait = wait
 
         # Generate the master script
@@ -88,29 +90,47 @@ class RDFoxRunner(RDFoxEndpoint):
             port = match.group(1)
             logger.info("RDFox started on port %s", port)
             self.connect("http://localhost:%s" % port)
+            if self._endpoint_ready is not None:
+                logger.debug("Signalling that endpoint is ready...")
+                self._endpoint_ready.set()
 
         if ERROR_PATTERN.match(line):
             logger.error("RDFox error: %s" % line)
             # TODO often the error is more than one line -- should keep printing
             # while the next lines are indented.
 
-    def start(self, wait_secs=None):
+    def start(self):
         """Start RDFox.
 
         :param wait_secs: how many seconds to wait for RDFox to start.
         """
-        logger.debug("Starting to run RDFox")
+        wait_for_exit = (self.wait == "exit")
+        wait_for_endpoint = (self.wait == "endpoint")
+
+        logger.debug("Starting to run RDFox (wait_for_exit=%s, wait_for_endpoint=%s)",
+                     wait_for_exit, wait_for_endpoint)
         self._runner = CommandRunner(
             self.input_files,
             self.command,
-            wait_before_enter=self.wait,
             working_dir=self.working_dir,
             output_callback=self._check_for_errors,
         )
-        self._runner.start()
 
-        if wait_secs is not None:
-            time.sleep(wait_secs)
+        if wait_for_endpoint:
+            self._endpoint_ready = threading.Event()
+            self._runner.start()
+            logger.debug("CommandRunner started, waiting for endpoint...")
+            self._endpoint_ready.wait()
+            logger.debug("...endpoint ready!")
+        else:
+            self._endpoint_ready = None
+            self._runner.start()
+
+            if wait_for_exit:
+                logger.debug("CommandRunner started, waiting for exit...")
+                self._runner.wait()
+            else:
+                logger.debug("CommandRunner started.")
 
     def stop(self):
         """Stop RDFox."""
@@ -118,7 +138,7 @@ class RDFoxRunner(RDFoxEndpoint):
         self._runner.stop()
 
     def __enter__(self):
-        self.start(wait_secs=0.5)
+        self.start()
         return self
 
     def __exit__(self, exc, value, tb):
@@ -145,7 +165,7 @@ def run_rdfox_collecting_output(input_files: Mapping[str, PathOrIO],
     """
 
     if "wait" not in kwargs:
-        kwargs["wait"] = True
+        kwargs["wait"] = "exit"
 
     result = {}
     with RDFoxRunner(input_files, script, **kwargs) as rdfox:

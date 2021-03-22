@@ -173,7 +173,7 @@ class CommandRunner:
         logger.debug("...terminate returned.")
         try:
             logger.debug("waiting for process to exit...")
-            self._process.wait(timeout=1)
+            self._process.wait(timeout=5)
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
         except subprocess.TimeoutExpired:
             logger.error('Subprocess did not terminate in time')
@@ -181,6 +181,7 @@ class CommandRunner:
 
         self._output_thread.join()
 
+        self._process.poll()  # update returncode
         if self._process.returncode > 0:
             logger.error("Error running command: %d", self._process.returncode)
             # raise subprocess.CalledProcessError(self._process.returncode, cmd=self.command)
