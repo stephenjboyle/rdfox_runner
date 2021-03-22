@@ -103,7 +103,7 @@ class RDFoxRunner(RDFoxEndpoint):
         self._runner = CommandRunner(
             self.input_files,
             self.command,
-            wait=self.wait,
+            wait_before_enter=self.wait,
             working_dir=self.working_dir,
             output_callback=self._check_for_errors,
         )

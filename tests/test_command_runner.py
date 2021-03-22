@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import Mock
 from io import StringIO
 import requests
+import platform
 
 from rdfox_runner.command_runner import CommandRunner
 
@@ -45,7 +46,7 @@ def test_cat_works_when_waiting(test_files):
     }
     command = "sleep 0.2 && cat a.txt target_subdir/b.txt > result.txt"
 
-    with CommandRunner(input_files, command, shell=True, wait=True) as ctx:
+    with CommandRunner(input_files, command, shell=True, wait_before_enter=True) as ctx:
         result = ctx.files("result.txt").read_text()
 
     assert result == "ab"
@@ -59,7 +60,7 @@ def test_cat_fails_when_not_waiting(test_files):
     command = "sleep 0.5 && cat a.txt target_subdir/b.txt > result.txt"
 
     with pytest.raises(FileNotFoundError):
-        with CommandRunner(input_files, command, shell=True, wait=False) as ctx:
+        with CommandRunner(input_files, command, shell=True) as ctx:
             ctx.files("result.txt").read_text()
 
 
@@ -77,15 +78,38 @@ def test_file_object_as_input():
     assert result_b == "world"
 
 
-def test_mv_missing_file(test_files):
-    input_files = {
-        "a.txt": test_files / "source_subdir/a.txt",
-    }
+def test_mv_missing_file_no_wait(test_files):
     command = ["mv", "target_subdir/b.txt", "result.txt"]
 
-    with pytest.raises(subprocess.CalledProcessError):
-        with CommandRunner(input_files, command, wait=True) as ctx:
-            pass
+    with CommandRunner({}, command) as ctx:
+        # The subprocess has not finished yet
+        assert ctx.returncode is None
+
+    # Outside of the block, the subprocess should have been terminated; but the
+    # numeric return code for this is different on different platforms
+    if platform.system() == "Windows":
+        expected_return_code = 1
+    else:
+        expected_return_code = -15
+    assert ctx.returncode == expected_return_code
+
+
+def test_mv_missing_file_wait_before_enter(test_files):
+    command = ["mv", "target_subdir/b.txt", "result.txt"]
+
+    with CommandRunner({}, command, wait_before_enter=True) as ctx:
+        assert ctx.returncode == 1
+
+
+def test_mv_missing_file_wait_before_exit(test_files):
+    command = ["mv", "target_subdir/b.txt", "result.txt"]
+
+    with CommandRunner({}, command, wait_before_exit=True) as ctx:
+        # The subprocess has not finished yet
+        assert ctx.returncode is None
+
+    # Outside of the block, the subprocess should have finished
+    assert ctx.returncode == 1
 
 
 def test_output_callback():
@@ -93,7 +117,7 @@ def test_output_callback():
     command = ["echo", "this is an error"]
     callback = Mock()
 
-    with CommandRunner(input_files, command, output_callback=callback, wait=True) as ctx:
+    with CommandRunner(input_files, command, output_callback=callback, wait_before_exit=True):
         pass
 
     assert callback.call_args == (("this is an error",),)

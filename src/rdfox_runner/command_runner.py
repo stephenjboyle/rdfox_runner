@@ -33,8 +33,10 @@ class CommandRunner:
         source path.
     :param command: command to run, as passed to :class:`subprocess.Popen`
     :param shell: whether to run command within shell
-    :param wait: whether to wait for command to complete before continuing with
-        context manager body.
+    :param wait_before_enter: whether to wait for command to complete before
+        continuing with context manager body.
+    :param wait_before_exit: whether to wait for command to complete by itself
+        before terminating it, when leaving context manager body.
     :param timeout: timeout if `wait` is true.
     :param working_dir: Path to setup command in, defaults to a temporary
         directory
@@ -46,7 +48,8 @@ class CommandRunner:
             input_files: Optional[Mapping[str, PathOrIO]] = None,
             command: Optional[Union[List, str]] = None,
             shell: bool = False,
-            wait: bool = False,
+            wait_before_enter: bool = False,
+            wait_before_exit: bool = False,
             timeout: float = 10.0,
             working_dir: Optional[StrPath] = None,
             output_callback: Optional[Callable] = None,
@@ -60,7 +63,8 @@ class CommandRunner:
         self.input_files = input_files or {}
         self.command = command
         self.shell = shell
-        self.wait = wait
+        self.wait_before_enter = wait_before_enter
+        self.wait_before_exit = wait_before_exit
         self.timeout = timeout
         self.working_dir = working_dir
         self.output_callback = output_callback
@@ -143,20 +147,20 @@ class CommandRunner:
 
         logger.debug("finished starting")
 
-        if self.wait:
-            logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
-            try:
-                self._process.wait(timeout=self.timeout)
-                logger.info('== subprocess exited with rc = %s', self._process.returncode)
-            except subprocess.TimeoutExpired:
-                logger.error('subprocess did not terminate in time')
+    def wait(self):
+        """Wait for subprocess to exit.
+
+        Waits up to :attr:`timeout` seconds.
+        """
+        logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
+        try:
+            self._process.wait(timeout=self.timeout)
+            logger.info('Subprocess exited with returncode = %s', self._process.returncode)
+        except subprocess.TimeoutExpired:
+            logger.error('Subprocess did not terminate in time when waiting, continuing')
 
     def stop_subprocess(self):
-        """Stop the subprocess.
-
-        :raises subprocess.CalledProcessError: if the subprocess returns an
-            error exit code.
-        """
+        """Stop the subprocess. """
         if self.command is None:
             return
 
@@ -164,24 +168,30 @@ class CommandRunner:
             logger.warning("trying to stop process that wasn't started")
             return
 
-        logger.debug("stopping")
+        logger.debug("trying to terminate processs...")
         self._process.terminate()
+        logger.debug("...terminate returned.")
         try:
+            logger.debug("waiting for process to exit...")
             self._process.wait(timeout=1)
-            logger.info('== subprocess exited with rc = %s', self._process.returncode)
+            logger.info('Subprocess exited with returncode = %s', self._process.returncode)
         except subprocess.TimeoutExpired:
-            logger.error('subprocess did not terminate in time')
+            logger.error('Subprocess did not terminate in time')
+            self._process.kill()
 
         self._output_thread.join()
 
         if self._process.returncode > 0:
             logger.error("Error running command: %d", self._process.returncode)
-            raise subprocess.CalledProcessError(self._process.returncode, cmd=self.command)
+            # raise subprocess.CalledProcessError(self._process.returncode, cmd=self.command)
         elif self._process.returncode < 0:
             logger.warning("Process was killed: returncode=%d", self._process.returncode)
 
-        # result = get_file_contents(tempdir, output_files)
-        # return result
+    @property
+    def returncode(self):
+        if self._process:
+            return self._process.returncode
+        return None
 
     def cleanup_files(self):
         """Cleanup temporary working directory, if needed.
@@ -200,9 +210,13 @@ class CommandRunner:
 
     def __enter__(self):
         self.start()
+        if self.wait_before_enter:
+            self.wait()
         return self
 
     def __exit__(self, exc, value, tb):
+        if self.wait_before_exit:
+            self.wait()
         self.stop()
 
     def files(self, path) -> Path:
