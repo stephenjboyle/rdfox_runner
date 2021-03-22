@@ -12,10 +12,20 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.os }}
+
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9]
+        config:
+          - os: ubuntu-latest
+            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v4.2.0/RDFox-linux-4.2.0.zip
+            name: RDFox
+            pathInArchive: RDFox-linux-4.2.0/RDFox
+          - os: windows-latest
+            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v4.2.0/RDFox-win64-4.2.0.zip
+            name: RDFox.exe
+            pathInArchive: RDFox-win64-4.2.0/RDFox.exe
 
     steps:
     - uses: actions/checkout@v2
@@ -24,10 +34,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install RDFox
-      run: |
-        curl -sO https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v4.2.0/RDFox-linux-4.2.0.zip
-        unzip RDFox-linux-4.2.0.zip
-        echo "$PWD/RDFox-linux-4.2.0" >> $GITHUB_PATH
+      uses: engineerd/configurator@v0.0.6
+      with:
+        name: ${{ matrix.config.name }}
+        url: ${{ matrix.config.url }}
+        pathInArchive: ${{ matrix.config.pathInArchive }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
