@@ -50,7 +50,7 @@ class CommandRunner:
             shell: bool = False,
             wait_before_enter: bool = False,
             wait_before_exit: bool = False,
-            timeout: float = 10.0,
+            timeout: float = 60.0,
             working_dir: Optional[StrPath] = None,
             output_callback: Optional[Callable] = None,
         ):
@@ -173,7 +173,7 @@ class CommandRunner:
         logger.debug("...terminate returned.")
         try:
             logger.debug("waiting for process to exit...")
-            self._process.wait(timeout=5)
+            self._process.wait(timeout=60)
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
         except subprocess.TimeoutExpired:
             logger.error('Subprocess did not terminate in time')
