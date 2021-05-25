@@ -176,7 +176,8 @@ class CommandRunner:
         logger.debug("trying to terminate processs...")
         try:
             self._process.stdin.close()
-        except BrokenPipeError:
+        except (OSError, BrokenPipeError):
+            # On Windows it's an OSError, see https://bugs.python.org/issue35754
             pass
         self._process.terminate()
         logger.debug("...terminate returned.")

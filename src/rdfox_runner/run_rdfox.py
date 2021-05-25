@@ -140,7 +140,8 @@ class RDFoxRunner(RDFoxEndpoint):
         try:
             self._runner._process.stdin.write(b"quit\n")
             self._runner._process.stdin.flush()
-        except BrokenPipeError:
+        except (OSError, BrokenPipeError):
+            # On Windows it's an OSError, see https://bugs.python.org/issue35754
             pass
 
         self._runner.stop()
