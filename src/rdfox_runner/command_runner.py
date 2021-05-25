@@ -50,7 +50,7 @@ class CommandRunner:
             shell: bool = False,
             wait_before_enter: bool = False,
             wait_before_exit: bool = False,
-            timeout: float = 60.0,
+            timeout: Optional[float] = None,
             working_dir: Optional[StrPath] = None,
             output_callback: Optional[Callable] = None,
         ):
@@ -154,7 +154,10 @@ class CommandRunner:
 
         Waits up to :attr:`timeout` seconds.
         """
-        logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
+        if self.timeout is not None:
+            logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
+        else:
+            logger.debug("waiting for ever for subprocess to finish...")
         try:
             self._process.wait(timeout=self.timeout)
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
