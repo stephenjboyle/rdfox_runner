@@ -134,6 +134,7 @@ class CommandRunner:
         self._process = subprocess.Popen(
             self.command,
             cwd=self.working_dir,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             # text=True,
@@ -143,6 +144,7 @@ class CommandRunner:
 
         self._output_thread = threading.Thread(target=output_reader,
                                                args=(self._process, self.output_callback))
+        self._output_thread.daemon = True
         self._output_thread.start()
 
         logger.debug("finished starting")
@@ -169,11 +171,15 @@ class CommandRunner:
             return
 
         logger.debug("trying to terminate processs...")
+        try:
+            self._process.stdin.close()
+        except BrokenPipeError:
+            pass
         self._process.terminate()
         logger.debug("...terminate returned.")
         try:
             logger.debug("waiting for process to exit...")
-            self._process.wait(timeout=60)
+            self._process.wait(timeout=5)
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
         except subprocess.TimeoutExpired:
             logger.error('Subprocess did not terminate in time')

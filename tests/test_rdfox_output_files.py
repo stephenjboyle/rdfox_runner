@@ -4,6 +4,7 @@ import pytest
 
 from pathlib import Path
 from io import StringIO
+import shutil
 from rdflib import Namespace, Literal, URIRef
 from rdflib.namespace import RDF, FOAF
 import requests
@@ -30,6 +31,7 @@ SCRIPT = [
     'set query.answer-format "text/csv"',
     'set output "output.csv"',
     'answer query.rq',
+    'quit',
 ]
 
 
@@ -53,6 +55,16 @@ def test_static_output(input_files):
         result = rdfox.files("output.csv").read_text()
 
     assert result == "person\nhttp://example.org/alice#me\n"
+
+
+def test_static_output_copy(input_files, tmp_path):
+    output_path = tmp_path / "output/output.csv"
+    output_path.parent.mkdir()
+    working_dir = tmp_path / "working"
+    with RDFoxRunner(input_files, SCRIPT, working_dir=working_dir) as rdfox:
+        shutil.copy(rdfox.files("output.csv"), output_path)
+
+    assert output_path.read_text() == "person\nhttp://example.org/alice#me\n"
 
 
 def test_static_output_helper(input_files):
