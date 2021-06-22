@@ -50,7 +50,7 @@ class CommandRunner:
             shell: bool = False,
             wait_before_enter: bool = False,
             wait_before_exit: bool = False,
-            timeout: float = 10.0,
+            timeout: Optional[float] = None,
             working_dir: Optional[StrPath] = None,
             output_callback: Optional[Callable] = None,
         ):
@@ -134,6 +134,7 @@ class CommandRunner:
         self._process = subprocess.Popen(
             self.command,
             cwd=self.working_dir,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             # text=True,
@@ -143,6 +144,7 @@ class CommandRunner:
 
         self._output_thread = threading.Thread(target=output_reader,
                                                args=(self._process, self.output_callback))
+        self._output_thread.daemon = True
         self._output_thread.start()
 
         logger.debug("finished starting")
@@ -152,7 +154,10 @@ class CommandRunner:
 
         Waits up to :attr:`timeout` seconds.
         """
-        logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
+        if self.timeout is not None:
+            logger.debug("waiting %.1f s for subprocess to finish...", self.timeout)
+        else:
+            logger.debug("waiting for ever for subprocess to finish...")
         try:
             self._process.wait(timeout=self.timeout)
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
@@ -169,6 +174,11 @@ class CommandRunner:
             return
 
         logger.debug("trying to terminate processs...")
+        try:
+            self._process.stdin.close()
+        except (OSError, BrokenPipeError):
+            # On Windows it's an OSError, see https://bugs.python.org/issue35754
+            pass
         self._process.terminate()
         logger.debug("...terminate returned.")
         try:

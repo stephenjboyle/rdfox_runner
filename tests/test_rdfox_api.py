@@ -79,6 +79,7 @@ def test_rdfox_error_for_missing_file(caplog):
     script = [
         'dstore create default par-complex-nn',
         'import facts_does_not_exist.ttl',
+        'quit',
     ]
     with RDFoxRunner(input_files, script) as rdfox:
         pass

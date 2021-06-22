@@ -135,6 +135,15 @@ class RDFoxRunner(RDFoxEndpoint):
     def stop(self):
         """Stop RDFox."""
         logger.debug("Stopping RDFox")
+
+        # Try to exit gracefully first
+        try:
+            self._runner._process.stdin.write(b"quit\n")
+            self._runner._process.stdin.flush()
+        except (OSError, BrokenPipeError):
+            # On Windows it's an OSError, see https://bugs.python.org/issue35754
+            pass
+
         self._runner.stop()
 
     def __enter__(self):
