@@ -79,7 +79,7 @@ def test_file_object_as_input():
 
 
 def test_mv_missing_file_no_wait(test_files):
-    command = ["mv", "target_subdir/b.txt", "result.txt"]
+    command = ["sleep", "5"]
 
     with CommandRunner({}, command) as ctx:
         # The subprocess has not finished yet
