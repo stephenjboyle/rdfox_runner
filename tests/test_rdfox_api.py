@@ -91,3 +91,16 @@ def test_rdfox_error_for_bad_query(rdfox):
     query = "SELECT ?person WHERE"
     with pytest.raises(ParsingError, match="'{' expected"):
         rdfox.query(query)
+
+
+def test_add_triples(rdfox):
+    bob_friends_1 = rdfox.query_records(QUERY_COUNT_FRIENDS)[1]["count"]
+    assert bob_friends_1 == 1
+
+    rdfox.add_triples([
+        (URIRef("http://example.org/bob#me"), FOAF.knows, URIRef("http://example.org/mary#me")),
+    ])
+    print("facts")
+    print(rdfox.facts())
+    bob_friends_2 = rdfox.query_records(QUERY_COUNT_FRIENDS)[1]["count"]
+    assert bob_friends_2 == 2

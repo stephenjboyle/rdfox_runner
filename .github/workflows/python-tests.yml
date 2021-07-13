@@ -19,13 +19,13 @@ jobs:
         python-version: [3.7, 3.8, 3.9]
         config:
           - os: ubuntu-latest
-            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v4.2.0/RDFox-linux-4.2.0.zip
+            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v5.1.0/RDFox-linux-x86_64-5.1.0.zip
             name: RDFox
-            pathInArchive: RDFox-linux-4.2.0/RDFox
+            pathInArchive: RDFox-linux-x86_64-5.1.0/RDFox
           - os: windows-latest
-            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v4.2.0/RDFox-win64-4.2.0.zip
+            url: https://rdfox-distribution.s3.eu-west-2.amazonaws.com/release/v5.1.0/RDFox-win64-x86_64-5.1.0.zip
             name: RDFox.exe
-            pathInArchive: RDFox-win64-4.2.0/RDFox.exe
+            pathInArchive: RDFox-win64-x86_64-5.1.0/RDFox.exe
 
     steps:
     - uses: actions/checkout@v2

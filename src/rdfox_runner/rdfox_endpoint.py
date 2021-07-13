@@ -150,13 +150,17 @@ class RDFoxEndpoint:
         Note: compatible with RDFox version 5.0 and later.
 
         """
+        if self.server is None:
+            raise RuntimeError("Need to connect to server first")
         triples = ["%s %s %s ." % (s.n3(), p.n3(), o.n3()) for s, p, o in triples]
-        return requests.patch(
-            "http://localhost:12110/datastores/default/content",
+        response = requests.patch(
+            f"{self.server}/datastores/default/content",
             params={"operation": "add-content"},
             # Before RDFox version 5.0 it was {"mode": "add"}
             data="\n".join(triples),
         )
+        response.raise_for_status()
+        return response
 
 
 def assert_reponse_ok(response, message):
