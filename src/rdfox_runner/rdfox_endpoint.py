@@ -141,6 +141,23 @@ class RDFoxEndpoint:
         assert_reponse_ok(response, "Failed to retrieve facts.")
         return response.text
 
+    def add_triples(self, triples):
+        """Add triples to the RDF data store.
+
+        In principle this should work via the rdflib SPARQLUpdateStore, but
+        RDFox does not accept data in that format.
+
+        Note: compatible with RDFox version 5.0 and later.
+
+        """
+        triples = ["%s %s %s ." % (s.n3(), p.n3(), o.n3()) for s, p, o in triples]
+        return requests.patch(
+            "http://localhost:12110/datastores/default/content",
+            params={"operation": "add-content"},
+            # Before RDFox version 5.0 it was {"mode": "add"}
+            data="\n".join(triples),
+        )
+
 
 def assert_reponse_ok(response, message):
     """Helper function to raise exception if the REST endpoint returns an unexpected

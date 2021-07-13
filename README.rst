@@ -2,8 +2,9 @@
  rdfox_runner
 ==============
 
-
 Set up and run `RDFox`_ scripts in a temporary directory.
+
+Requires RDFox version 5.0 or greater for the `RDFoxEndpoint.add_triples` method.
 
 
 Description
