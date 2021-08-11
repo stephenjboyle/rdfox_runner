@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 
 ERROR_PATTERN = re.compile(r"Error: .*|"
                            r"File with name '.*' cannot be found|"
-                           r"An error occurred while executing the command:|"
+                           r"Script file .* cannot be found|"
+                           r"Unknown command '.*'|"
                            r"The server could not start listening")
+
+MULTILINE_ERROR_PATTERN = re.compile(r"An error occurred while executing the command:")
 
 ENDPOINT_PATTERN = re.compile(r"The REST endpoint was successfully started at port number/service name (\S+)")
 
@@ -84,7 +87,20 @@ class RDFoxRunner(RDFoxEndpoint):
         self.command = [rdfox_executable, "sandbox", ".", f"exec {MASTER_KEY}"]
         self.working_dir = working_dir
 
+        # Accumulate multi-line error messages
+        self._multiline_error = False
+
     def _check_for_errors(self, line):
+
+        # Check mode: if a multi-line error message has already started, accumulate it
+        if self._multiline_error:
+            if line.startswith(" "):
+                logger.error("RDFox error: %s", line.strip())
+                return
+            else:
+                # Error finished
+                self._multiline_error = False
+
         match = ENDPOINT_PATTERN.match(line)
         if match:
             port = match.group(1)
@@ -94,10 +110,13 @@ class RDFoxRunner(RDFoxEndpoint):
                 logger.debug("Signalling that endpoint is ready...")
                 self._endpoint_ready.set()
 
-        if ERROR_PATTERN.match(line):
+        elif ERROR_PATTERN.match(line):
             logger.error("RDFox error: %s" % line)
-            # TODO often the error is more than one line -- should keep printing
-            # while the next lines are indented.
+
+        elif MULTILINE_ERROR_PATTERN.match(line):
+            # The error is more than one line -- start accumulator mode
+            logger.debug("Starting multiline error message")
+            self._multiline_error = True
 
     def start(self):
         """Start RDFox.
@@ -140,7 +159,7 @@ class RDFoxRunner(RDFoxEndpoint):
         try:
             self._runner._process.stdin.write(b"quit\n")
             self._runner._process.stdin.flush()
-        except (OSError, BrokenPipeError):
+        except (OSError, BrokenPipeError, ValueError):
             # On Windows it's an OSError, see https://bugs.python.org/issue35754
             pass
 
