@@ -163,6 +163,10 @@ class CommandRunner:
             logger.info('Subprocess exited with returncode = %s', self._process.returncode)
         except subprocess.TimeoutExpired:
             logger.error('Subprocess did not terminate in time when waiting, continuing')
+        except KeyboardInterrupt:
+            logger.info('KeyboardInterrupt: stopping subprocess...')
+            self.stop_subprocess()
+            raise
 
     def stop_subprocess(self):
         """Stop the subprocess. """
