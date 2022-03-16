@@ -74,6 +74,16 @@ def test_query_records_returns_urifrefs(rdfox):
     ]
 
 
+def test_query_records_n3_format(rdfox):
+    query = """
+    SELECT ?rel WHERE {
+        <http://example.org/bob#me> ?rel <http://example.org/alice#me>
+    }
+    """
+    result = rdfox.query_records(query, n3=True)
+    assert list(result) == [{"rel": "foaf:knows"}]
+
+
 def test_rdfox_error_for_missing_file(caplog):
     input_files = {}
     script = [

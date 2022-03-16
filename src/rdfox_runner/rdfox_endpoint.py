@@ -9,7 +9,7 @@ import logging
 import re
 import requests
 from textwrap import indent
-from rdflib import Graph, Literal
+from rdflib import Graph, Literal, URIRef
 
 # Pandas is optional, but convenient if available
 try:
@@ -101,7 +101,7 @@ class RDFoxEndpoint:
                 raise ParsingError(query=full_query, message=err.response.text)
             raise
 
-    def query_dataframe(self, query_object, *args, **kwargs):
+    def query_dataframe(self, query_object, n3=True, *args, **kwargs):
         """Query the SPARQL endpoint, returning a pandas DataFrame.
 
         See :meth:`query`.
@@ -110,9 +110,16 @@ class RDFoxEndpoint:
         if pd is None:
             raise RuntimeError("pandas is not available")
         res = self.query(query_object, *args, **kwargs)
-        return pd.DataFrame(res, columns=[str(c) for c in res.vars])
+        if n3:
+            data = [
+                [self._convert_value(value, n3) for value in row]
+                for row in res
+            ]
+        else:
+            data = res
+        return pd.DataFrame(data, columns=[str(c) for c in res.vars])
 
-    def query_records(self, query_object, *args, **kwargs) -> List[Dict[str, Any]]:
+    def query_records(self, query_object, n3=False, *args, **kwargs) -> List[Dict[str, Any]]:
         """Query the SPARQL endpoint, returning a list of dicts.
 
         See :meth:`query`.
@@ -120,9 +127,27 @@ class RDFoxEndpoint:
         """
         res = self.query(query_object, *args, **kwargs)
         return [
-            {str(c): (value.value if isinstance(value, Literal) else value) for c, value in zip(res.vars, row)}
+            {str(c): self._convert_value(value, n3) for c, value in zip(res.vars, row)}
             for row in res
         ]
+
+    def _convert_value(self, value, n3=False):
+        if isinstance(value, Literal):
+            return value.value
+        if n3 and isinstance(value, URIRef):
+            return value.n3(self.graph.namespace_manager)
+        return value
+
+    def query_one_record(self, query_object, *args, **kwargs) -> Dict[str, Any]:
+        """Query the SPARQL endpoint, and check that only one result is returned (as a dict).
+
+        See :meth:`query`.
+
+        """
+        res = self.query_records(query_object, *args, **kwargs)
+        if len(res) != 1:
+            raise ValueError(f"Expected only 1 result but got {len(res)}")
+        return res[0]
 
     def facts(self, format="text/turtle") -> str:
         """Fetch all facts from the server.
