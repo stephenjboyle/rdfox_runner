@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 from tempfile import mkdtemp
 import threading
+import time
 
 from typing import Any, Callable, List, Union, Optional, TextIO, Mapping
 
@@ -249,11 +250,15 @@ def copy_files(src: PathOrIO, dst: Path):
             if dst.exists():
                 shutil.rmtree(dst)
             logger.debug("Copying directory %s to %s", src, dst)
+            start_time = time.perf_counter()
             shutil.copytree(src, dst)
+            logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
         else:
             dst.parent.mkdir(parents=True, exist_ok=True)
             logger.debug("Copying file %s to %s", src, dst)
+            start_time = time.perf_counter()
             shutil.copy(src, dst)
+            logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
     else:
         dst.parent.mkdir(parents=True, exist_ok=True)
         logger.debug("Writing data %s", dst)
