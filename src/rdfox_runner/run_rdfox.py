@@ -5,6 +5,7 @@ This aims to hide the complexity of setting up RDFox, loading data, adding
 rules, answering queries, behind a simple function that maps data -> answers.
 """
 
+import subprocess
 import threading
 import logging
 from io import StringIO
@@ -13,6 +14,9 @@ from pathlib import Path
 
 from typing import List, Union, Optional, Mapping
 
+from packaging.version import Version, parse as parse_version
+from packaging.specifiers import SpecifierSet
+
 StrPath = Union[str, Path]
 
 from .rdfox_endpoint import RDFoxEndpoint
@@ -20,6 +24,8 @@ from .command_runner import CommandRunner, PathOrIO
 
 logger = logging.getLogger(__name__)
 
+
+VERSION_PATTERN = re.compile(r"RDFox version: ([0-9.]+).*")
 
 ERROR_PATTERN = re.compile(r"Error: .*|"
                            r"File with name '.*' cannot be found|"
@@ -30,6 +36,33 @@ ERROR_PATTERN = re.compile(r"Error: .*|"
 MULTILINE_ERROR_PATTERN = re.compile(r"An error occurred while executing the command:")
 
 ENDPOINT_PATTERN = re.compile(r"The REST endpoint was successfully started at port number/service name (\S+)")
+
+
+class RDFoxVersionError(RuntimeError):
+    pass
+
+
+def get_rdfox_version(rdfox_executable=None):
+    """Return RDFox version as a `packaging.Version` instance."""
+    if rdfox_executable is None:
+        rdfox_executable = "RDFox"
+    command = [rdfox_executable, "sandbox", ".", "echo RDFox version: $(version)", "quit"]
+    output = subprocess.check_output(command).decode()
+    lines = output.splitlines()
+    match = VERSION_PATTERN.match(lines[-1])
+    if match:
+        return parse_version(match.group(1))
+    else:
+        raise ValueError("Unknown output from RDFox")
+
+
+def check_rdfox_version(specifier, rdfox_executable=None):
+    """Raise `RDFoxVersionError` if RDFox version out of range."""
+
+    spec = SpecifierSet(specifier)
+    version = get_rdfox_version(rdfox_executable)
+    if not version in spec:
+        raise RDFoxVersionError("Bad RDFox version: {} does not match '{}'".format(version, spec))
 
 
 class RDFoxRunner(RDFoxEndpoint):

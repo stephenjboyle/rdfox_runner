@@ -7,8 +7,9 @@ from io import StringIO
 from rdflib import Namespace, Literal, URIRef
 from rdflib.namespace import RDF, FOAF
 import requests
+from packaging.version import Version
 
-from rdfox_runner.run_rdfox import RDFoxRunner
+from rdfox_runner.run_rdfox import RDFoxRunner, RDFoxVersionError, get_rdfox_version, check_rdfox_version
 from rdfox_runner.rdfox_endpoint import ParsingError
 
 
@@ -114,3 +115,14 @@ def test_add_triples(rdfox):
     print(rdfox.facts())
     bob_friends_2 = rdfox.query_records(QUERY_COUNT_FRIENDS)[1]["count"]
     assert bob_friends_2 == 2
+
+
+def test_get_rdfox_version():
+    version = get_rdfox_version()
+    assert isinstance(version, Version)
+
+
+def test_check_max_version():
+    # Assume the version we have isn't this old...
+    with pytest.raises(RDFoxVersionError):
+        check_rdfox_version("<= 0.1")

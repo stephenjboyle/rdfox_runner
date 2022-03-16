@@ -11,10 +11,13 @@ except importlib_metadata.PackageNotFoundError:
     __version__ = "dev"
 
 from .command_runner import CommandRunner
-from .run_rdfox import RDFoxEndpoint, RDFoxRunner
+from .run_rdfox import RDFoxEndpoint, RDFoxRunner, RDFoxVersionError, get_rdfox_version, check_rdfox_version
 
 __all__ = [
     "RDFoxEndpoint",
     "RDFoxRunner",
     "CommandRunner",
+    "RDFoxVersionError",
+    "get_rdfox_version",
+    "check_rdfox_version",
 ]

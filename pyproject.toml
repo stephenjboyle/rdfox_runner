@@ -9,6 +9,7 @@ python = "^3.7"
 rdflib = "^5.0.0"
 importlib-metadata = {version = ">= 1.0", python = "<3.8"}
 requests = "^2.25.1"
+packaging = ">= 15.0"
 
 # Temporary dependency -- since rdflib does not constrain version of pyparsing
 # and version 5 specified above is not compatible with pyparsing 3. When
