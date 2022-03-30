@@ -104,7 +104,12 @@ class RDFoxEndpoint:
     def query_dataframe(self, query_object, n3=True, *args, **kwargs):
         """Query the SPARQL endpoint, returning a pandas DataFrame.
 
+        Because this is often useful for human-readable output, the default is
+        to serialise results in N3 notation, using defined prefixes.
+
         See :meth:`query`.
+
+        :param n3: whether to return results in N3 notation, defaults to True.
 
         """
         if pd is None:
@@ -123,6 +128,8 @@ class RDFoxEndpoint:
         """Query the SPARQL endpoint, returning a list of dicts.
 
         See :meth:`query`.
+
+        :param n3: whether to return results in N3 notation, defaults to False.
 
         """
         res = self.query(query_object, *args, **kwargs)
