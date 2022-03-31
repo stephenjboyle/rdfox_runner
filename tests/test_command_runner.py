@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import time
 import subprocess
 import pytest
@@ -9,6 +10,13 @@ import requests
 import platform
 
 from rdfox_runner.command_runner import CommandRunner
+
+
+IS_CMD_EXE = os.environ.get("COMSPEC", "").lower().endswith("cmd.exe")
+IS_POWERSHELL = os.environ.get("COMSPEC", "").lower().endswith("powershell.exe")
+
+MOVE_COMMAND = "move" if IS_CMD_EXE else "mv"
+AND_AND = "&&" if not IS_POWERSHELL else ";"
 
 
 @pytest.fixture
@@ -39,26 +47,33 @@ def test_http_server(test_files):
     assert response.text == "a"
 
 
-def test_cat_works_when_waiting(test_files):
+def test_wait_before_enter_waits_for_command_to_complete(test_files):
     input_files = {
         "a.txt": test_files / "source_subdir/a.txt",
         "target_subdir/b.txt": test_files / "source_subdir/b.txt",
     }
-    command = "sleep 0.2 && cat a.txt target_subdir/b.txt > result.txt"
-
+    if IS_CMD_EXE:
+        command = "ping -n 1 127.0.0.1 && move a.txt result.txt"
+    else:
+        command = f"sleep 0.51 {AND_AND} mv a.txt results.txt"
+    
     with CommandRunner(input_files, command, shell=True, wait_before_enter=True) as ctx:
         result = ctx.files("result.txt").read_text()
 
-    assert result == "ab"
+    assert result == "a"
 
 
-def test_cat_fails_when_not_waiting(test_files):
+def test_lack_of_wait_before_enter_leads_to_failure(test_files):
     input_files = {
         "a.txt": test_files / "source_subdir/a.txt",
         "target_subdir/b.txt": test_files / "source_subdir/b.txt",
     }
-    command = "sleep 0.5 && cat a.txt target_subdir/b.txt > result.txt"
-
+    if IS_CMD_EXE:
+        command = "ping -n 1 127.0.0.1 && move a.txt result.txt"
+    else:
+        # On powershell seems to round to integer so 0.5 is too little...
+        command = f"sleep 0.51 {AND_AND} mv a.txt results.txt"
+    
     with pytest.raises(FileNotFoundError):
         with CommandRunner(input_files, command, shell=True) as ctx:
             ctx.files("result.txt").read_text()
@@ -79,19 +94,21 @@ def test_file_object_as_input():
 
 
 def test_no_errors_reported_for_successful_command(caplog):
-    input_files = {"a.txt": StringIO("hello")}
-    with CommandRunner(input_files) as ctx:
-        result_a = ctx.files("a.txt").read_text()
+    # As long as the command exits cleanly, should be no error
+    with CommandRunner({}, command="python --version", wait_before_exit=True) as ctx:
+        pass
 
-    assert result_a == "hello"
     for record in caplog.records:
         assert record.levelname not in ["CRITICAL", "ERROR"]
 
 
 def test_mv_missing_file_no_wait():
-    command = ["sleep", "5"]
+    if IS_CMD_EXE:
+        command = "ping -n 5 127.0.0.1"
+    else:
+        command = "sleep 5"
 
-    with CommandRunner({}, command) as ctx:
+    with CommandRunner({}, command, shell=True) as ctx:
         # The subprocess has not finished yet
         assert ctx.returncode is None
 
@@ -105,16 +122,18 @@ def test_mv_missing_file_no_wait():
 
 
 def test_mv_missing_file_wait_before_enter():
-    command = ["mv", "target_subdir/b.txt", "result.txt"]
+    command = [MOVE_COMMAND, "target_subdir/b.txt", "result.txt"]
 
-    with CommandRunner({}, command, wait_before_enter=True) as ctx:
+    # Shell needed on Windows cmd.exe
+    with CommandRunner({}, command, shell=True, wait_before_enter=True) as ctx:
         assert ctx.returncode == 1
 
 
 def test_mv_missing_file_wait_before_exit():
-    command = ["mv", "target_subdir/b.txt", "result.txt"]
+    command = [MOVE_COMMAND, "target_subdir/b.txt", "result.txt"]
 
-    with CommandRunner({}, command, wait_before_exit=True) as ctx:
+    # Shell needed on Windows cmd.exe
+    with CommandRunner({}, command, shell=True, wait_before_exit=True) as ctx:
         # The subprocess has not finished yet
         assert ctx.returncode is None
 
@@ -124,18 +143,20 @@ def test_mv_missing_file_wait_before_exit():
 
 def test_output_callback():
     input_files = {}
-    command = ["echo", "this is an error"]
+    command = "echo error"
     callback = Mock()
 
-    with CommandRunner(input_files, command, output_callback=callback, wait_before_exit=True):
+    # Shell needed on Windows cmd.exe
+    with CommandRunner(input_files, command, shell=True, output_callback=callback, wait_before_exit=True):
         pass
 
-    assert callback.call_args == (("this is an error",),)
+    assert callback.call_args == (("error",),)
 
 
 class TestWorkingDir:
     def test_working_dir_present_in_context_then_removed(self):
-        with CommandRunner(command=["echo", "hello"]) as ctx:
+        # Shell needed on Windows cmd.exe
+        with CommandRunner(command=["echo", "hello"], shell=True) as ctx:
             assert ctx.working_dir is not None
             assert ctx.working_dir.exists()
             tmp = ctx.working_dir
@@ -144,7 +165,8 @@ class TestWorkingDir:
         assert not tmp.exists()
 
     def test_explicit_working_dir_is_not_removed(self, tmp_path):
-        with CommandRunner(command=["echo", "hello"], working_dir=tmp_path) as ctx:
+        # Shell needed on Windows cmd.exe
+        with CommandRunner(command=["echo", "hello"], shell=True, working_dir=tmp_path) as ctx:
             assert ctx.working_dir == tmp_path
 
         assert ctx.working_dir == tmp_path
