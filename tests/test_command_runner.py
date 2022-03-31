@@ -78,7 +78,17 @@ def test_file_object_as_input():
     assert result_b == "world"
 
 
-def test_mv_missing_file_no_wait(test_files):
+def test_no_errors_reported_for_successful_command(caplog):
+    input_files = {"a.txt": StringIO("hello")}
+    with CommandRunner(input_files) as ctx:
+        result_a = ctx.files("a.txt").read_text()
+
+    assert result_a == "hello"
+    for record in caplog.records:
+        assert record.levelname not in ["CRITICAL", "ERROR"]
+
+
+def test_mv_missing_file_no_wait():
     command = ["sleep", "5"]
 
     with CommandRunner({}, command) as ctx:
@@ -94,14 +104,14 @@ def test_mv_missing_file_no_wait(test_files):
     assert ctx.returncode == expected_return_code
 
 
-def test_mv_missing_file_wait_before_enter(test_files):
+def test_mv_missing_file_wait_before_enter():
     command = ["mv", "target_subdir/b.txt", "result.txt"]
 
     with CommandRunner({}, command, wait_before_enter=True) as ctx:
         assert ctx.returncode == 1
 
 
-def test_mv_missing_file_wait_before_exit(test_files):
+def test_mv_missing_file_wait_before_exit():
     command = ["mv", "target_subdir/b.txt", "result.txt"]
 
     with CommandRunner({}, command, wait_before_exit=True) as ctx:
