@@ -122,6 +122,8 @@ class RDFoxRunner(RDFoxEndpoint):
 
         # Accumulate multi-line error messages
         self._multiline_error = False
+        self._critical_error = False
+        self._critical_error_message = ""
 
     def _check_for_errors(self, line):
 
@@ -133,6 +135,11 @@ class RDFoxRunner(RDFoxEndpoint):
             else:
                 # Error finished
                 self._multiline_error = False
+
+        elif self._critical_error and not self._critical_error_message:
+            # because this is running in a different thread, don't raise here
+            self._critical_error_message = line
+            return
 
         match = ENDPOINT_PATTERN.match(line)
         if match:
@@ -150,6 +157,10 @@ class RDFoxRunner(RDFoxEndpoint):
             # The error is more than one line -- start accumulator mode
             logger.debug("Starting multiline error message")
             self._multiline_error = True
+
+        elif line == "A critical error occurred while running RDFox:":
+            logger.debug("Starting critical error message")
+            self._critical_error = True
 
     def start(self):
         """Start RDFox.
@@ -173,6 +184,7 @@ class RDFoxRunner(RDFoxEndpoint):
             self._runner.start()
             logger.debug("CommandRunner started, waiting for endpoint...")
             self._endpoint_ready.wait()
+            self.raise_for_errors()
             logger.debug("...endpoint ready!")
         else:
             self._endpoint_ready = None
@@ -181,6 +193,7 @@ class RDFoxRunner(RDFoxEndpoint):
             if wait_for_exit:
                 logger.debug("CommandRunner started, waiting for exit...")
                 self._runner.wait()
+                self.raise_for_errors()
             else:
                 logger.debug("CommandRunner started.")
 
@@ -197,6 +210,17 @@ class RDFoxRunner(RDFoxEndpoint):
             pass
 
         self._runner.stop()
+        self.raise_for_errors()
+
+    def raise_for_errors(self):
+        """Raise an exception if RDFox has reported an error.
+
+        Currently this only reports "critical" errors.
+
+        """
+        logger.debug("raise_for_errors: %s, %s", self._critical_error, self._critical_error_message)
+        if self._critical_error:
+            raise RuntimeError(f"Critical RDFox error: {self._critical_error_message}")
 
     def __enter__(self):
         self.start()

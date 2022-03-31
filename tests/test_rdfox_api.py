@@ -92,10 +92,32 @@ def test_rdfox_error_for_missing_file(caplog):
         'import facts_does_not_exist.ttl',
         'quit',
     ]
-    with RDFoxRunner(input_files, script) as rdfox:
+    with RDFoxRunner(input_files, script):
         pass
 
     assert "File with name 'facts_does_not_exist.ttl' cannot be found." in caplog.text
+
+
+@pytest.fixture
+def bad_rdfox_licence():
+    import os
+    if "RDFOX_LICENSE_CONTENT" in os.environ:
+        original_value = os.environ["RDFOX_LICENSE_CONTENT"]
+        os.environ["RDFOX_LICENSE_CONTENT"] = "bad licence"
+        yield
+        os.environ["RDFOX_LICENSE_CONTENT"] = original_value
+    else:
+        os.environ["RDFOX_LICENSE_CONTENT"] = "bad licence"
+        yield
+        del os.environ["RDFOX_LICENSE_CONTENT"]
+
+
+def test_rdfox_critical_error_raises(bad_rdfox_licence):
+    # Bad licence file causes a "critical error" which should be propagated up
+    script = ['quit']
+    with pytest.raises(Exception):
+        with RDFoxRunner({}, script):
+            pass
 
 
 def test_rdfox_error_for_bad_query(rdfox):
