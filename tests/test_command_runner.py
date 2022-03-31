@@ -55,7 +55,7 @@ def test_wait_before_enter_waits_for_command_to_complete(test_files):
     if IS_CMD_EXE:
         command = "ping -n 1 127.0.0.1 && move a.txt result.txt"
     else:
-        command = f"sleep 0.51 {AND_AND} mv a.txt results.txt"
+        command = f"sleep 0.51 {AND_AND} mv a.txt result.txt"
     
     with CommandRunner(input_files, command, shell=True, wait_before_enter=True) as ctx:
         result = ctx.files("result.txt").read_text()
@@ -72,7 +72,7 @@ def test_lack_of_wait_before_enter_leads_to_failure(test_files):
         command = "ping -n 1 127.0.0.1 && move a.txt result.txt"
     else:
         # On powershell seems to round to integer so 0.5 is too little...
-        command = f"sleep 0.51 {AND_AND} mv a.txt results.txt"
+        command = f"sleep 0.51 {AND_AND} mv a.txt result.txt"
     
     with pytest.raises(FileNotFoundError):
         with CommandRunner(input_files, command, shell=True) as ctx:
@@ -95,7 +95,8 @@ def test_file_object_as_input():
 
 def test_no_errors_reported_for_successful_command(caplog):
     # As long as the command exits cleanly, should be no error
-    with CommandRunner({}, command="python --version", wait_before_exit=True) as ctx:
+    command = ["python", "--version"]
+    with CommandRunner({}, command, wait_before_exit=True) as ctx:
         pass
 
     for record in caplog.records:
@@ -126,7 +127,7 @@ def test_mv_missing_file_wait_before_enter():
 
     # Shell needed on Windows cmd.exe
     with CommandRunner({}, command, shell=True, wait_before_enter=True) as ctx:
-        assert ctx.returncode == 1
+        assert ctx.returncode and ctx.returncode >= 1
 
 
 def test_mv_missing_file_wait_before_exit():
@@ -138,7 +139,7 @@ def test_mv_missing_file_wait_before_exit():
         assert ctx.returncode is None
 
     # Outside of the block, the subprocess should have finished
-    assert ctx.returncode == 1
+    assert ctx.returncode and ctx.returncode >= 1
 
 
 def test_output_callback():
