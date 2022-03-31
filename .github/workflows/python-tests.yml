@@ -54,6 +54,6 @@ jobs:
       run: |
         echo "Path:"
         echo "$PATH"
-        poetry run pytest
+        poetry run pytest -vvv
       env:
         RDFOX_LICENSE_CONTENT: ${{ secrets.RDFOX_LICENSE }}
