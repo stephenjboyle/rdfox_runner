@@ -131,6 +131,11 @@ class RDFoxRunner(RDFoxEndpoint):
         if self._multiline_error:
             if line.startswith(" "):
                 logger.error("RDFox error: %s", line.strip())
+                # Treat out-of-memory as a critical error?
+                if line.strip() == "The RDFox instance has run out of memory.":
+                    # XXX make this less messy
+                    self._critical_error_message = line.strip()
+                    self._critical_error = True
                 return
             else:
                 # Error finished
