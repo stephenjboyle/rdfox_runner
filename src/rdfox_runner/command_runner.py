@@ -7,6 +7,7 @@ This is the simplest building block used as the base for rdfox_runner.
 """
 
 
+from io import TextIOBase
 import os
 import logging
 import subprocess
@@ -262,8 +263,11 @@ def copy_files(src: PathOrIO, dst: Path):
     else:
         dst.parent.mkdir(parents=True, exist_ok=True)
         logger.debug("Writing data %s", dst)
-        with open(dst, "wt") as f:
+        start_time = time.perf_counter()
+        mode = "t" if isinstance(src, TextIOBase) else "b"
+        with open(dst, "w" + mode) as f:
             f.write(src.read())
+        logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
 
 
 def get_file_contents(root_path: Path, output_files: Mapping[Any, StrPath]):

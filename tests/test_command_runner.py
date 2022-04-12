@@ -5,7 +5,7 @@ import time
 import subprocess
 import pytest
 from unittest.mock import Mock
-from io import StringIO
+from io import StringIO, BytesIO
 import requests
 import platform
 
@@ -91,6 +91,23 @@ def test_file_object_as_input():
 
     assert result_a == "hello"
     assert result_b == "world"
+
+
+def test_binary_file_object_as_input():
+    # This is something that will cause an error if accidentally try to decode as text
+    DATA = b"\x8b"
+
+    with pytest.raises(UnicodeDecodeError):
+        DATA.decode()
+
+    input_files = {
+        "a": BytesIO(DATA),
+    }
+
+    with CommandRunner(input_files) as ctx:
+        result_a = ctx.files("a").read_bytes()
+
+    assert result_a == DATA
 
 
 def test_no_errors_reported_for_successful_command(caplog):
