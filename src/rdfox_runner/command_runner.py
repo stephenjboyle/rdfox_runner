@@ -7,7 +7,7 @@ This is the simplest building block used as the base for rdfox_runner.
 """
 
 
-from io import TextIOBase
+from io import IOBase, TextIOBase
 import os
 import logging
 import subprocess
@@ -260,14 +260,29 @@ def copy_files(src: PathOrIO, dst: Path):
             start_time = time.perf_counter()
             shutil.copy(src, dst)
             logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
-    else:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        logger.debug("Writing data %s", dst)
-        start_time = time.perf_counter()
+        return
+
+    # The Path-like objects returned by importlib_resources have read_text() and
+    # read_bytes() methods, but they are not real Paths (so cannot be copied as
+    # above) and they do not have read() methods, so check specifically.
+    if hasattr(src, "read_bytes"):
+        mode = "b"
+        read_func = src.read_bytes
+    elif hasattr(src, "read_text"):
+        mode = "t"
+        read_func = src.read_text
+    elif isinstance(src, IOBase):
         mode = "t" if isinstance(src, TextIOBase) else "b"
-        with open(dst, "w" + mode) as f:
-            f.write(src.read())
-        logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
+        read_func = src.read
+    else:
+        raise TypeError("Unrecognised file source %r" % src)
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    logger.debug("Writing data %s", dst)
+    start_time = time.perf_counter()
+    with open(dst, "w" + mode) as f:
+        f.write(read_func())
+    logger.debug("Finished in %d ms", (time.perf_counter() - start_time) * 1000)
 
 
 def get_file_contents(root_path: Path, output_files: Mapping[Any, StrPath]):
