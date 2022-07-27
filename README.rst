@@ -43,3 +43,17 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 
 .. _RDFox: https://www.oxfordsemantic.tech/product
 .. _documentation: https://rdfox-runner.readthedocs.io/en/latest/
+
+Changes
+=======
+
+v0.4.0
+------
+
+`RDFoxRunner` is no longer a subclass of `RDFoxEndpoint`, but it still returns an `RDFoxEndpoint` when used as a context manager. Thus most use should not need changing. The exception is the `RDFoxRunner.files` method, which now needs to be accessed on the original `RDFoxRunner` instance::
+
+    runner = RDFoxRunner(input_files, script)
+    with runner:  # not `with runner as rdfox:`
+        output = runner.files(path)
+
+Tested against RDFox version 5.6.

@@ -65,7 +65,7 @@ def check_rdfox_version(specifier, rdfox_executable=None):
         raise RDFoxVersionError("Bad RDFox version: {} does not match '{}'".format(version, spec))
 
 
-class RDFoxRunner(RDFoxEndpoint):
+class RDFoxRunner:
     """Context manager to run RDFox in a temporary directory.
 
     :param input_files: mapping of files {target path: source file} to set up in
@@ -79,6 +79,15 @@ class RDFoxRunner(RDFoxEndpoint):
     :param working_dir: Path to setup command in, defaults to a temporary
         directory
     :param rdfox_executable: Path RDFox executable (default "RDFox")
+    :param endpoint: RDFoxEndpoint instance to use (default None, meaning use the
+        built in class). This can be used to customise the endpoint interface.
+
+    When used as a context manager, the `RDFoxRunner` instance returns
+    `endpoint` for running queries etc. For more control a custom
+    `RDFoxEndpoint` can be passed in. When the RDFox endpoint is started, the
+    `connect()` method on the endpoint will be called with the connection
+    string. The endpoint is available at the attribute `endpoint`.
+
     """
 
     def __init__(
@@ -89,8 +98,8 @@ class RDFoxRunner(RDFoxEndpoint):
             wait: Optional[str] = None,
             working_dir: Optional[StrPath] = None,
             rdfox_executable: Optional[StrPath] = None,
+            endpoint: Optional[RDFoxEndpoint] = None,
     ):
-        super().__init__(namespaces)
 
         MASTER_KEY = "__master.rdfox"
         if MASTER_KEY in input_files:
@@ -111,6 +120,12 @@ class RDFoxRunner(RDFoxEndpoint):
         elif wait not in ("endpoint", "exit", "nothing"):
             raise ValueError("wait must be 'endpoint' or 'exit' or 'nothing'")
         self.wait = wait
+
+        if endpoint is None:
+            # Could remove namespaces in future and require a custom endpoint
+            # to be passed in if namespaces need to be configured?
+            endpoint = RDFoxEndpoint(namespaces)
+        self.endpoint = endpoint
 
         # Generate the master script
         self.input_files = {
@@ -150,7 +165,7 @@ class RDFoxRunner(RDFoxEndpoint):
         if match:
             port = match.group(1)
             logger.info("RDFox started on port %s", port)
-            self.connect("http://localhost:%s" % port)
+            self.endpoint.connect("http://localhost:%s" % port)
             if self._endpoint_ready is not None:
                 logger.debug("Signalling that endpoint is ready...")
                 self._endpoint_ready.set()
@@ -229,7 +244,7 @@ class RDFoxRunner(RDFoxEndpoint):
 
     def __enter__(self):
         self.start()
-        return self
+        return self.endpoint
 
     def __exit__(self, exc, value, tb):
         self.stop()
@@ -258,7 +273,8 @@ def run_rdfox_collecting_output(input_files: Mapping[str, PathOrIO],
         kwargs["wait"] = "exit"
 
     result = {}
-    with RDFoxRunner(input_files, script, **kwargs) as rdfox:
+    runner = RDFoxRunner(input_files, script, **kwargs)
+    with runner:
         for key, filename in output_files.items():
-            result[key] = rdfox.files(filename).read_text()
+            result[key] = runner.files(filename).read_text()
     return result

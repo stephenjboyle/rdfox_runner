@@ -10,7 +10,7 @@ import requests
 from packaging.version import Version
 
 from rdfox_runner.run_rdfox import RDFoxRunner, RDFoxVersionError, get_rdfox_version, check_rdfox_version
-from rdfox_runner.rdfox_endpoint import ParsingError
+from rdfox_runner.rdfox_endpoint import RDFoxEndpoint, ParsingError
 
 
 HERE = Path(__file__).parent
@@ -26,22 +26,29 @@ ORDER BY ?person
 """
 
 
-@pytest.fixture(scope="module")
-def rdfox():
-    input_files = {
-        "facts.ttl": HERE / "w3c_example.ttl",
-    }
-    script = [
+W3C_INPUT_FILES = {
+    "facts.ttl": HERE / "w3c_example.ttl",
+}
+
+def w3c_script(port):
+    return [
         'dstore create default type par-complex-nn',
         'import facts.ttl',
-        'set endpoint.port "12111"',
+        'set endpoint.port "%d"' % port,
         'endpoint start',
     ]
-    # Namespaces available in queries
-    namespaces = {
-        "foaf": FOAF,
-    }
-    with RDFoxRunner(input_files, script, namespaces) as rdfox:
+
+# Namespaces available in queries
+W3C_NAMESPACES = {
+    "foaf": FOAF,
+}
+
+
+@pytest.fixture(scope="module")
+def rdfox():
+    with RDFoxRunner(W3C_INPUT_FILES,
+                     w3c_script(12111),
+                     W3C_NAMESPACES) as rdfox:
         yield rdfox
 
 
@@ -83,6 +90,25 @@ def test_query_records_n3_format(rdfox):
     """
     result = rdfox.query_records(query, n3=True)
     assert list(result) == [{"rel": "foaf:knows"}]
+
+
+class CustomEndpoint(RDFoxEndpoint):
+    """Custon RDFoxEndpoint."""
+    def my_query(self):
+        query = """
+        SELECT ?rel WHERE {
+            <http://example.org/bob#me> ?rel <http://example.org/alice#me>
+        }
+        """
+        return self.query_records(query, n3=True)
+
+
+def test_custom_endpoint():
+    endpoint = CustomEndpoint(W3C_NAMESPACES)
+    with RDFoxRunner(W3C_INPUT_FILES, w3c_script(12114), endpoint=endpoint) as rdfox:
+        assert endpoint is rdfox
+        result = rdfox.my_query()
+        assert list(result) == [{"rel": "foaf:knows"}]
 
 
 def test_rdfox_error_for_missing_file(caplog):
