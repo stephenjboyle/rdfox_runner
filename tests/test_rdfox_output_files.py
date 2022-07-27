@@ -26,7 +26,7 @@ ORDER BY ?person
 """
 
 SCRIPT = [
-    'dstore create default par-complex-nn',
+    'dstore create default type par-complex-nn',
     'import facts.ttl',
     'set query.answer-format "text/csv"',
     'set output "output.csv"',

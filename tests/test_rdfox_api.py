@@ -32,7 +32,7 @@ def rdfox():
         "facts.ttl": HERE / "w3c_example.ttl",
     }
     script = [
-        'dstore create default par-complex-nn',
+        'dstore create default type par-complex-nn',
         'import facts.ttl',
         'set endpoint.port "12111"',
         'endpoint start',
@@ -88,14 +88,16 @@ def test_query_records_n3_format(rdfox):
 def test_rdfox_error_for_missing_file(caplog):
     input_files = {}
     script = [
-        'dstore create default par-complex-nn',
+        'dstore create default type par-complex-nn',
         'import facts_does_not_exist.ttl',
         'quit',
     ]
     with RDFoxRunner(input_files, script):
         pass
 
-    assert "File with name 'facts_does_not_exist.ttl' cannot be found." in caplog.text
+    # Was different in v5.1
+    # assert "File with name 'facts_does_not_exist.ttl' cannot be found." in caplog.text
+    assert "Name 'facts_does_not_exist.ttl' cannot be resolved to a file" in caplog.text
 
 
 @pytest.fixture
@@ -112,6 +114,7 @@ def bad_rdfox_licence():
         del os.environ["RDFOX_LICENSE_CONTENT"]
 
 
+@pytest.mark.xfail(reason="bad license does not seem to be a critical error anymore")
 def test_rdfox_critical_error_raises(bad_rdfox_licence):
     # Bad licence file causes a "critical error" which should be propagated up
     script = ['quit']

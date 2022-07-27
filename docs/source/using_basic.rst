@@ -15,7 +15,7 @@ For example, if we have some RDF triples in `facts.ttl`, and a query to answer i
         "query.rq": "path/to/query.rq",
     }
     script = [
-        'dstore create default par-complex-nn',
+        'dstore create default type par-complex-nn',
         'import facts.ttl',
         'set query.answer-format "text/csv"',
         'set output "output.csv"',

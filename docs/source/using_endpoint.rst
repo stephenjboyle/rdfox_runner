@@ -9,7 +9,7 @@ For example, if we have some RDF triples in `facts.ttl`, we can answer queries l
         "facts.ttl": "path/to/facts.ttl",
     }
     script = [
-        'dstore create default par-complex-nn',
+        'dstore create default type par-complex-nn',
         'import facts.ttl',
         'endpoint start',
     ]
