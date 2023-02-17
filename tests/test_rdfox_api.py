@@ -126,6 +126,22 @@ def test_rdfox_error_for_missing_file(caplog):
     assert "Name 'facts_does_not_exist.ttl' cannot be resolved to a file" in caplog.text
 
 
+def test_stop_on_error(caplog):
+    input_files = {}
+    script = [
+        'dstore create default type par-complex-nn',
+        'set on-error stop',
+        'import facts_does_not_exist.ttl',
+        'quit',
+    ]
+    runner = RDFoxRunner(input_files, script)
+    with runner:
+        assert runner.errors == [
+            "Name 'facts_does_not_exist.ttl' cannot be resolved to a file relative to "
+            "either the facts (./) or the datalog programs (./) directory."
+        ]
+
+
 @pytest.fixture
 def bad_rdfox_licence():
     import os

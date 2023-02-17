@@ -29,6 +29,7 @@ VERSION_PATTERN = re.compile(r"RDFox version: ([0-9.]+).*")
 
 ERROR_PATTERN = re.compile(r"Error: .*|"
                            r"File with name '.*' cannot be found|"
+                           r"Name '.*' cannot be resolved to a file relative to either|"
                            r"Script file .* cannot be found|"
                            r"Unknown command '.*'|"
                            r"The server could not start listening")
@@ -140,11 +141,18 @@ class RDFoxRunner:
         self._critical_error = False
         self._critical_error_message = ""
 
+        # Store errors
+        self.errors = []
+        self.stopped_on_error = False
+
     def _check_for_errors(self, line):
 
         # Check mode: if a multi-line error message has already started, accumulate it
         if self._multiline_error:
             if line.startswith(" "):
+                if self._multiline_error is True:
+                    self._multiline_error = []
+                self._multiline_error.append(line.strip())
                 logger.error("RDFox error: %s", line.strip())
                 # Treat out-of-memory as a critical error?
                 if line.strip() == "The RDFox instance has run out of memory.":
@@ -154,6 +162,10 @@ class RDFoxRunner:
                 return
             else:
                 # Error finished
+                if isinstance(self._multiline_error, list):
+                    msg = "\n".join(self._multiline_error)
+                    if msg:
+                        self.errors.append(msg)
                 self._multiline_error = False
 
         elif self._critical_error and not self._critical_error_message:
@@ -172,6 +184,7 @@ class RDFoxRunner:
 
         elif ERROR_PATTERN.match(line):
             logger.error("RDFox error: %s" % line)
+            self.errors.append(line)
 
         elif MULTILINE_ERROR_PATTERN.match(line):
             # The error is more than one line -- start accumulator mode
@@ -181,6 +194,11 @@ class RDFoxRunner:
         elif line == "A critical error occurred while running RDFox:":
             logger.debug("Starting critical error message")
             self._critical_error = True
+
+        elif line.startswith("Stopping shell evaluation due to 'on-error' policy"):
+            logger.error("RDFox error: %s", line)
+            self.stopped_on_error = True
+            self.stop()
 
     def start(self):
         """Start RDFox.
