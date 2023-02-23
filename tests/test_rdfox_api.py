@@ -135,11 +135,9 @@ def test_stop_on_error():
         'quit',
     ]
     runner = RDFoxRunner(input_files, script)
-    with runner:
-        assert runner.errors == [
-            "Name 'facts_does_not_exist.ttl' cannot be resolved to a file relative to "
-            "either the facts (./) or the datalog programs (./) directory."
-        ]
+    with pytest.raises(RuntimeError, match="facts_does_not_exist.ttl"):
+        with runner:
+            pass
 
 
 def test_stop_on_error_wait_for_endpoint():
@@ -153,11 +151,9 @@ def test_stop_on_error_wait_for_endpoint():
         'endpoint start',
     ]
     runner = RDFoxRunner(input_files, script)
-    with runner:
-        assert runner.errors == [
-            "Name 'facts_does_not_exist.ttl' cannot be resolved to a file relative to "
-            "either the facts (./) or the datalog programs (./) directory."
-        ]
+    with pytest.raises(RuntimeError, match="facts_does_not_exist.ttl"):
+        with runner:
+            pass
 
 
 @pytest.fixture

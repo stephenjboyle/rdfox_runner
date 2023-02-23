@@ -264,12 +264,15 @@ class RDFoxRunner:
     def raise_for_errors(self):
         """Raise an exception if RDFox has reported an error.
 
-        Currently this only reports "critical" errors.
+        "Critical" errors are reported. If the error policy is set to "stop",
+        then errors that caused RDFox to stop are also reported.
 
         """
         logger.debug("raise_for_errors: %s, %s", self._critical_error, self._critical_error_message)
         if self._critical_error:
             raise RuntimeError(f"Critical RDFox error: {self._critical_error_message}")
+        if self.stopped_on_error and self.errors:
+            raise RuntimeError("RDFox errors:\n  " + "\n  ".join(self.errors))
 
     def __enter__(self):
         self.start()
