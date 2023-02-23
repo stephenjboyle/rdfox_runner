@@ -198,7 +198,9 @@ class RDFoxRunner:
         elif line.startswith("Stopping shell evaluation due to 'on-error' policy"):
             logger.error("RDFox error: %s", line)
             self.stopped_on_error = True
-            self.stop()
+            self.send_quit()
+            if self._endpoint_ready is not None:
+                self._endpoint_ready.set()
 
     def start(self):
         """Start RDFox.
@@ -235,17 +237,26 @@ class RDFoxRunner:
             else:
                 logger.debug("CommandRunner started.")
 
-    def stop(self):
-        """Stop RDFox."""
-        logger.debug("Stopping RDFox")
+    def send_quit(self):
+        """Send "quit" command to RDFox."""
+        logger.debug("Sending 'quit' command to RDFox")
 
-        # Try to exit gracefully first
+        if not (self._runner and self._runner._process and self._runner._process.stdin):
+            return
+
         try:
             self._runner._process.stdin.write(b"quit\n")
             self._runner._process.stdin.flush()
         except (OSError, BrokenPipeError, ValueError):
             # On Windows it's an OSError, see https://bugs.python.org/issue35754
             pass
+
+    def stop(self):
+        """Stop RDFox."""
+        logger.debug("Stopping RDFox")
+
+        # Try to exit gracefully first
+        self.send_quit()
 
         self._runner.stop()
         self.raise_for_errors()

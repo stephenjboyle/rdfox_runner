@@ -126,13 +126,31 @@ def test_rdfox_error_for_missing_file(caplog):
     assert "Name 'facts_does_not_exist.ttl' cannot be resolved to a file" in caplog.text
 
 
-def test_stop_on_error(caplog):
+def test_stop_on_error():
     input_files = {}
     script = [
         'dstore create default type par-complex-nn',
         'set on-error stop',
         'import facts_does_not_exist.ttl',
         'quit',
+    ]
+    runner = RDFoxRunner(input_files, script)
+    with runner:
+        assert runner.errors == [
+            "Name 'facts_does_not_exist.ttl' cannot be resolved to a file relative to "
+            "either the facts (./) or the datalog programs (./) directory."
+        ]
+
+
+def test_stop_on_error_wait_for_endpoint():
+    # Slightly different from previous test, logic to wait for endpoint message
+    # should be cancelled if there is an error.
+    input_files = {}
+    script = [
+        'dstore create default type par-complex-nn',
+        'set on-error stop',
+        'import facts_does_not_exist.ttl',
+        'endpoint start',
     ]
     runner = RDFoxRunner(input_files, script)
     with runner:
