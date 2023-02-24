@@ -47,6 +47,26 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 Changes
 =======
 
+v0.5.0
+------
+
+Add new endpoint method `query_raw` which returns the response from RDFox directly, rather than parsing into an `rdflib` Graph. If the Python Graph representation is not needed, and the response is large, this is much faster.
+
+v0.4.3
+------
+
+Raise an error when RDFox execution stops due to error policy `on-error = "stop"`.
+
+v0.4.2
+------
+
+Quit RDFox when an error happens with error policy `on-error = "stop"` also while waiting for endpoint to start (fixing an infinite wait).
+
+v0.4.1
+------
+
+Quit RDFox when an error happens with error policy `on-error = "stop"`.
+
 v0.4.0
 ------
 
