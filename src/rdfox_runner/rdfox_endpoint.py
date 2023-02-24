@@ -55,6 +55,15 @@ class RDFoxEndpoint:
     :param namespaces: dict of RDFlib namespaces to bind
     """
 
+    # Allow short names for mime types, copying rdflib
+    _response_mime_types = {
+        'xml': 'application/sparql-results+xml, application/rdf+xml',
+        'json': 'application/sparql-results+json',
+        'csv': 'text/csv',
+        'tsv': 'text/tab-separated-values',
+        'ttl': 'test/turtle',
+    }
+
     def __init__(self, namespaces: Optional[Mapping] = None):
         self.namespaces = namespaces or {}
         self.server = None
@@ -72,6 +81,52 @@ class RDFoxEndpoint:
         self.server = url
         ENDPOINT = f"{url}/datastores/default/sparql"
         self.graph.open((ENDPOINT, ENDPOINT))
+
+    def query_raw(self, query, answer_format=None):
+        """Query the RDFox SPARQL endpoint directly.
+
+        Unlike `query`, the result is the raw response from RDFox, not an
+        `rdflib` Result object.
+
+        :raises: ParsingError
+        """
+
+        params = {
+            "query": query,
+            "prefix": [
+                f"{k}: <{v}>"
+                for k, v in self.namespaces.items()
+            ]
+        }
+
+        headers = {}
+        if answer_format is not None:
+            if answer_format in self._response_mime_types:
+                answer_format = self._response_mime_types[answer_format]
+            headers["Accept"] = answer_format
+
+        res = requests.get(
+            url=f"{self.server}/datastores/default/sparql",
+            headers=headers,
+            params=params,
+            stream=True,
+        )
+
+        # Handle parsing errors specially
+        if res.status_code == 400:
+            logger.error("Query error: %s", res)
+            msg = res.text
+            logger.error(indent(msg, "    "))
+            if "ParsingException" in msg:
+                logger.error("Query:")
+                for i, line in enumerate(query.splitlines()):
+                    logger.error(f"Line {i+1}: {line}")
+                raise ParsingError(query=query, message=msg)
+
+        # Other errors handled generically by requests
+        res.raise_for_status()
+
+        return res
 
     def query(self, query_object, *args, **kwargs):
         """Query the SPARQL endpoint.
