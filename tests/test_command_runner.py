@@ -189,3 +189,14 @@ class TestWorkingDir:
 
         assert ctx.working_dir == tmp_path
         assert tmp_path.exists()
+
+
+def test_command_from_callable():
+    input_files = {}
+    command = Mock(return_value="echo hello")
+
+    # Shell needed on Windows cmd.exe
+    with CommandRunner(input_files, command, shell=True, wait_before_exit=True) as ctx:
+        working_dir = ctx.working_dir
+
+    assert command.call_args == ((working_dir,),)

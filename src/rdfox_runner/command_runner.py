@@ -48,7 +48,7 @@ class CommandRunner:
     def __init__(
             self,
             input_files: Optional[Mapping[str, PathOrIO]] = None,
-            command: Optional[Union[List, str]] = None,
+            command: Optional[Union[List, str, Callable]] = None,
             shell: bool = False,
             wait_before_enter: bool = False,
             wait_before_exit: bool = False,
@@ -130,11 +130,15 @@ class CommandRunner:
         """
         if self.command is None:
             return
+        elif callable(self.command):
+            command = self.command(self.working_dir)
+        else:
+            command = self.command
 
-        logger.info("Running command '%s'", self.command)
+        logger.info("Running command '%s'", command)
 
         self._process = subprocess.Popen(
-            self.command,
+            command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
