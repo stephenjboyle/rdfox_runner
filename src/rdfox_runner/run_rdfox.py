@@ -91,6 +91,8 @@ class RDFoxRunner:
 
     """
 
+    MASTER_KEY = "__master.rdfox"
+
     def __init__(
             self,
             input_files: Mapping[str, PathOrIO],
@@ -102,15 +104,15 @@ class RDFoxRunner:
             endpoint: Optional[RDFoxEndpoint] = None,
     ):
 
-        MASTER_KEY = "__master.rdfox"
-        if MASTER_KEY in input_files:
-            raise ValueError(f'Cannot have an input file named "{MASTER_KEY}"')
+        if self.MASTER_KEY in input_files:
+            raise ValueError(f'Cannot have an input file named "{self.MASTER_KEY}"')
 
         if not isinstance(script, str):
             script = "\n".join(script)
 
         if rdfox_executable is None:
             rdfox_executable = "RDFox"
+        self.rdfox_executable = rdfox_executable
 
         if wait is None:
             # Try to choose a good default
@@ -131,9 +133,8 @@ class RDFoxRunner:
         # Generate the master script
         self.input_files = {
             **input_files,
-            MASTER_KEY: StringIO(script),
+            self.MASTER_KEY: StringIO(script),
         }
-        self.command = [rdfox_executable, "sandbox", ".", f"exec {MASTER_KEY}"]
         self.working_dir = working_dir
 
         # Accumulate multi-line error messages
@@ -144,6 +145,21 @@ class RDFoxRunner:
         # Store errors
         self.errors = []
         self.stopped_on_error = False
+
+    def _command(self, working_dir):
+        """Generate RDFox command line.
+
+        It's important that we pass the actual full path to the working
+        directory to RDFox, so that $(dir.root) in an absolute path and can be
+        used to robustly locate files in scripts.
+
+        """
+        return [
+            self.rdfox_executable,
+            "sandbox",
+            Path(working_dir).resolve(),
+            f"exec {self.MASTER_KEY}"
+        ]
 
     def _check_for_errors(self, line):
 
@@ -214,7 +230,7 @@ class RDFoxRunner:
                      wait_for_exit, wait_for_endpoint)
         self._runner = CommandRunner(
             self.input_files,
-            self.command,
+            self._command,
             working_dir=self.working_dir,
             output_callback=self._check_for_errors,
         )
