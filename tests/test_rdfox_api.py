@@ -32,7 +32,6 @@ W3C_INPUT_FILES = {
 
 def w3c_script(port):
     return [
-        'dstore create default type par-complex-nn',
         'import facts.ttl',
         'set endpoint.port "%d"' % port,
         'endpoint start',
@@ -45,15 +44,19 @@ W3C_NAMESPACES = {
 
 
 @pytest.fixture(scope="module")
-def rdfox():
+def rdfox(setup_script):
+    script = setup_script + w3c_script(12111)
     with RDFoxRunner(W3C_INPUT_FILES,
-                     w3c_script(12111),
+                     script,
                      W3C_NAMESPACES) as rdfox:
         yield rdfox
 
 
 def test_query(rdfox):
     result = rdfox.query(QUERY_COUNT_FRIENDS)
+    # import time
+    # print("QQQ", rdfox, rdfox.server)
+    # time.sleep(1000)
     assert list(result) == [
         (Literal("Alice"), Literal(3)),
         (Literal("Bob"), Literal(1)),
@@ -103,22 +106,22 @@ class CustomEndpoint(RDFoxEndpoint):
         return self.query_records(query, n3=True)
 
 
-def test_custom_endpoint():
+def test_custom_endpoint(setup_script):
     endpoint = CustomEndpoint(W3C_NAMESPACES)
-    with RDFoxRunner(W3C_INPUT_FILES, w3c_script(12114), endpoint=endpoint) as rdfox:
+    script = setup_script + w3c_script(12114)
+    with RDFoxRunner(W3C_INPUT_FILES, script, endpoint=endpoint) as rdfox:
         assert endpoint is rdfox
         result = rdfox.my_query()
         assert list(result) == [{"rel": "foaf:knows"}]
 
 
-def test_rdfox_error_for_missing_file(caplog):
+def test_rdfox_error_for_missing_file(setup_script, caplog):
     input_files = {}
     script = [
-        'dstore create default type par-complex-nn',
         'import facts_does_not_exist.ttl',
         'quit',
     ]
-    with RDFoxRunner(input_files, script):
+    with RDFoxRunner(input_files, setup_script + script):
         pass
 
     # Was different in v5.1
@@ -126,31 +129,29 @@ def test_rdfox_error_for_missing_file(caplog):
     assert "Name 'facts_does_not_exist.ttl' cannot be resolved to a file" in caplog.text
 
 
-def test_stop_on_error():
+def test_stop_on_error(setup_script):
     input_files = {}
     script = [
-        'dstore create default type par-complex-nn',
         'set on-error stop',
         'import facts_does_not_exist.ttl',
         'quit',
     ]
-    runner = RDFoxRunner(input_files, script)
+    runner = RDFoxRunner(input_files, setup_script + script)
     with pytest.raises(RuntimeError, match="facts_does_not_exist.ttl"):
         with runner:
             pass
 
 
-def test_stop_on_error_wait_for_endpoint():
+def test_stop_on_error_wait_for_endpoint(setup_script):
     # Slightly different from previous test, logic to wait for endpoint message
     # should be cancelled if there is an error.
     input_files = {}
     script = [
-        'dstore create default type par-complex-nn',
         'set on-error stop',
         'import facts_does_not_exist.ttl',
         'endpoint start',
     ]
-    runner = RDFoxRunner(input_files, script)
+    runner = RDFoxRunner(input_files, setup_script + script)
     with pytest.raises(RuntimeError, match="facts_does_not_exist.ttl"):
         with runner:
             pass

@@ -10,6 +10,7 @@ import re
 import requests
 from textwrap import indent
 from rdflib import Graph, Literal, URIRef
+from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 
 # Pandas is optional, but convenient if available
 try:
@@ -49,6 +50,29 @@ class ParsingError(Error):
         return f"ParsingError: {self.message}"
 
 
+# This is the value before version 6.0. After version 6.0, don't pass a value
+# for the default graph at all in queries.
+#
+RDFOX_DEFAULT_GRAPH = URIRef("http://oxfordsemantic.tech/RDFox#DefaultTriples")
+
+class RDFoxSPARQLUpdateStore(SPARQLUpdateStore):
+    """Avoid passing `default-graph-uri` in SPARQL queries.
+
+    Before version 6.0 of RDFox, this parameter had to be set to the default
+    graph URI if it was present. After version 6.0 it's not clear what the
+    default graph URI is, so we just avoid passing this parameter.
+
+    """
+
+    def _query(self, *args, **kwargs):
+        """Remove the `default_graph` kwarg that is used to set the
+        `default-graph-uri` parameter."""
+        if kwargs.get("default_graph") == RDFOX_DEFAULT_GRAPH:
+            del kwargs["default_graph"]
+        return super()._query(*args, **kwargs)
+
+
+
 class RDFoxEndpoint:
     """Interface to interact with a running RDFox endpoint.
 
@@ -68,7 +92,7 @@ class RDFoxEndpoint:
         self.namespaces = namespaces or {}
         self.server = None
         self.datastore = None
-        self.graph = Graph("SPARQLUpdateStore", identifier="http://oxfordsemantic.tech/RDFox#DefaultTriples")
+        self.graph = Graph(RDFoxSPARQLUpdateStore(), identifier=RDFOX_DEFAULT_GRAPH)  #"https://rdfox.com/vocabulary#DefaultTriples")
         for k, v in self.namespaces.items():
             self.graph.bind(k, v)
 

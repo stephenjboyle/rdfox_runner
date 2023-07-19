@@ -31,6 +31,18 @@ To release a new version of rdfox_runner:
 Tests
 =====
 
-Run the tests using pytest::
+To run the tests against multiple versions of RDFox, we use `nox`_. You can install it globally (as the nox project recommends), or it will be installed within the poetry Python environment and can be used with `poetry run nox ...` or within `poetry shell`.
 
-    pytest
+Run all the tests using nox::
+
+    nox
+
+To quickly re-run when no dependencies have changed (only edits to existing files) use the `-R` option to reuse the virtual environments::
+
+    nox -R
+
+Pass additional options to pytest after `--`, e.g.::
+
+    nox -R -- --log-cli-level=DEBUG -x
+
+.. _nox: https://nox.thea.codes/

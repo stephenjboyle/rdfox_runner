@@ -25,14 +25,16 @@ GROUP BY ?person ?name
 ORDER BY ?person
 """
 
-SCRIPT = [
-    'dstore create default type par-complex-nn',
-    'import facts.ttl',
-    'set query.answer-format "text/csv"',
-    'set output "output.csv"',
-    'answer query.rq',
-    'quit',
-]
+
+@pytest.fixture
+def script(setup_script):
+    return setup_script + [
+        'import facts.ttl',
+        'set query.answer-format "text/csv"',
+        'set output "output.csv"',
+        'answer query.rq',
+        'quit',
+    ]
 
 
 # It's important this is a fixture not a constant, because the StringIO needs
@@ -50,30 +52,30 @@ def input_files():
     }
 
 
-def test_static_output(input_files):
-    runner = RDFoxRunner(input_files, SCRIPT)
+def test_static_output(input_files, script):
+    runner = RDFoxRunner(input_files, script)
     with runner:
         result = runner.files("output.csv").read_text()
 
     assert result == "person\nhttp://example.org/alice#me\n"
 
 
-def test_static_output_copy(input_files, tmp_path):
+def test_static_output_copy(input_files, tmp_path, script):
     output_path = tmp_path / "output/output.csv"
     output_path.parent.mkdir()
     working_dir = tmp_path / "working"
-    runner = RDFoxRunner(input_files, SCRIPT, working_dir=working_dir)
+    runner = RDFoxRunner(input_files, script, working_dir=working_dir)
     with runner:
         shutil.copy(runner.files("output.csv"), output_path)
 
     assert output_path.read_text() == "person\nhttp://example.org/alice#me\n"
 
 
-def test_static_output_helper(input_files):
+def test_static_output_helper(input_files, script):
     output_files = {
         "friends": "output.csv",
     }
-    result = run_rdfox_collecting_output(input_files, SCRIPT, output_files)
+    result = run_rdfox_collecting_output(input_files, script, output_files)
     assert result == {
         "friends": "person\nhttp://example.org/alice#me\n",
     }
