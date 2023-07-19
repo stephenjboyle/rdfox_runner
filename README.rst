@@ -47,6 +47,20 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 Changes
 =======
 
+v0.5.2
+------
+
+Add compatibility with RDFox version 6.2.
+
+rdfox_runner is now tested against multiple RDFox versions (currently 5.6 and 6.2).
+
+v0.5.1
+------
+
+Now pass an absolute path to RDFox on command line.
+
+This makes the $(dir.root) variable be set to an absolute path, not "./", meaning that files can be more reliably loaded from different locations in scripts by using paths relative to the script root directory.
+
 v0.5.0
 ------
 
