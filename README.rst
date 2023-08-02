@@ -47,6 +47,11 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 Changes
 =======
 
+v0.6.0
+------
+
+Compatible with (& depend on) RDFlib version 6.
+
 v0.5.2
 ------
 
