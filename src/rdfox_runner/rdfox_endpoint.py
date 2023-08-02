@@ -8,6 +8,7 @@ rules, answering queries, behind a simple function that maps data -> answers.
 import logging
 import re
 import requests
+from urllib.error import HTTPError
 from textwrap import indent
 from rdflib import Graph, Literal, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
@@ -178,6 +179,11 @@ class RDFoxEndpoint:
                 for i, line in enumerate(full_query.splitlines()):
                     logger.error(f"Line {i+1}: {line}")
                 raise ParsingError(query=full_query, message=err.response.text)
+            raise
+        except ValueError as err:
+            # RDFlib version 6 swallows the error which is not helpful. Run the
+            # query using `query_raw` and hope it gives the same error.
+            self.query_raw(query_object, *args, **kwargs)
             raise
 
     def query_dataframe(self, query_object, n3=True, *args, **kwargs):
