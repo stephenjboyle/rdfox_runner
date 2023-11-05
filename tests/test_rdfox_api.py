@@ -121,8 +121,9 @@ def test_rdfox_error_for_missing_file(setup_script, caplog):
         'import facts_does_not_exist.ttl',
         'quit',
     ]
-    with RDFoxRunner(input_files, setup_script + script):
-        pass
+    with pytest.raises(RuntimeError):
+        with RDFoxRunner(input_files, setup_script + script):
+            pass
 
     # Was different in v5.1
     # assert "File with name 'facts_does_not_exist.ttl' cannot be found." in caplog.text

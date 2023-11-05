@@ -10,8 +10,12 @@ def rdfox_version():
 
 @pytest.fixture(scope="session")
 def setup_script(rdfox_version):
+    setup = [
+        # Stop execution on any error
+        "set on-error stop",
+    ]
     if rdfox_version < Version("6.0"):
-        setup = ["dstore create default type par-complex-nn"]
+        setup += ["dstore create default type par-complex-nn"]
     else:
-        setup = ["dstore create default type parallel-nn"]
+        setup += ["dstore create default type parallel-nn"]
     return setup
