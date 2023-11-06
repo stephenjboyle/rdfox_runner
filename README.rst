@@ -4,9 +4,9 @@
 
 Set up and run `RDFox`_ scripts in a temporary directory.
 
-Requires RDFox version 5.0 or greater for the `RDFoxEndpoint.add_triples` method.
+Requires RDFox version 6.0 or greater for the `RDFoxEndpoint.add_triples` method.
 
-`rdfox_runner` is tested against the latest version of RDFox (currently 5.6).
+`rdfox_runner` is tested against the latest versions of RDFox (currently 6.2 and 6.3.1).
 
 
 Description
