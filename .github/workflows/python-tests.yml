@@ -42,7 +42,7 @@ jobs:
       run: |
         echo "Path:"
         echo "$PATH"
-        poetry run nox
+        poetry run -- nox -- --log-cli-level=DEBUG
       env:
         RDFOX_LICENSE_CONTENT: ${{ secrets.RDFOX_LICENSE }}
     - name: Test with pytest (cmd.exe)
