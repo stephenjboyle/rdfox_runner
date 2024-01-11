@@ -37,9 +37,11 @@ def w3c_script(port):
         'endpoint start',
     ]
 
-# Namespaces available in queries
+# Namespaces available in queries -- include more than 1 to test a bug with
+# defining multiple namespaces.
 W3C_NAMESPACES = {
     "foaf": FOAF,
+    "another": "http://example.org/",
 }
 
 
