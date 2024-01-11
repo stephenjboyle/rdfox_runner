@@ -258,13 +258,15 @@ class RDFoxRunner:
         logger.debug("Sending 'quit' command to RDFox")
 
         if not (self._runner and self._runner._process and self._runner._process.stdin):
+            logger.debug("Could not send 'quit' command to RDFox")
             return
 
         try:
             self._runner._process.stdin.write(b"quit\n")
             self._runner._process.stdin.flush()
-        except (OSError, BrokenPipeError, ValueError):
+        except (OSError, BrokenPipeError, ValueError) as err:
             # On Windows it's an OSError, see https://bugs.python.org/issue35754
+            logger.debug("Error sending 'quit' command to RDFox: %s", err)
             pass
 
     def stop(self):
