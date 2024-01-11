@@ -47,6 +47,11 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 Changes
 =======
 
+v0.6.1
+------
+
+Fix bug with RDFox v6+ when setting multiple prefixes in `namespaces`.
+
 v0.6.0
 ------
 
