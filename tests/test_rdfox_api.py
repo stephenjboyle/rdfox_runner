@@ -41,7 +41,7 @@ def w3c_script(port):
 # defining multiple namespaces.
 W3C_NAMESPACES = {
     "foaf": FOAF,
-    "foaf-again": FOAF,
+    "another": "http://example.org/",
 }
 
 

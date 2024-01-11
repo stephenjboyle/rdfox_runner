@@ -116,12 +116,14 @@ class RDFoxEndpoint:
         :raises: ParsingError
         """
 
+        # FIXME this should be handled by configuring RDFox directly?
+        query_prefixes = "\n".join([
+            f"PREFIX {k}: <{v}>"
+            for k, v in self.namespaces.items()
+        ])
+
         params = {
-            "query": query,
-            "prefix": [
-                f"{k}: <{v}>"
-                for k, v in self.namespaces.items()
-            ]
+            "query": query_prefixes + query,
         }
 
         headers = {}
