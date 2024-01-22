@@ -47,6 +47,13 @@ rdfox_runner is licensed with the `MIT license <LICENSE>`_.
 Changes
 =======
 
+v0.6.2
+------
+
+Add compatibility with RDFox v7.0.
+
+The RDFox server info (including RDFox version) can now be retrieved from the `RDFoxEndpoint.server_info` method.
+
 v0.6.1
 ------
 

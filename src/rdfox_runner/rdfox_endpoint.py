@@ -10,7 +10,9 @@ import re
 import requests
 from urllib.error import HTTPError
 from textwrap import indent
+from packaging.version import Version, parse as parse_version
 from rdflib import Graph, Literal, URIRef
+from rdflib.query import Result
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 
 # Pandas is optional, but convenient if available
@@ -96,6 +98,7 @@ class RDFoxEndpoint:
         self.graph = Graph(RDFoxSPARQLUpdateStore(), identifier=RDFOX_DEFAULT_GRAPH)  #"https://rdfox.com/vocabulary#DefaultTriples")
         for k, v in self.namespaces.items():
             self.graph.bind(k, v)
+        self.rdfox_version = None
 
     def connect(self, url: str):
         """Connect to RDFox at given base URL.
@@ -106,6 +109,26 @@ class RDFoxEndpoint:
         self.server = url
         ENDPOINT = f"{url}/datastores/default/sparql"
         self.graph.open((ENDPOINT, ENDPOINT))
+        server_info = self.server_info()
+        self.rdfox_version = server_info["version"]
+
+    def server_info(self):
+        """Retrieve server info."""
+        res = requests.get(
+            url=f"{self.server}/",
+            headers={
+                "Accept": "application/sparql-results+json"
+            },
+            stream=True
+        )
+        res.raise_for_status()
+        result = Result.parse(res.raw, format="json")
+        info = {
+            row["Property"].toPython(): row["Value"].toPython()
+            for row in result
+        }
+        info["version"] = parse_version(info["version"])
+        return info
 
     def query_raw(self, query, answer_format=None):
         """Query the RDFox SPARQL endpoint directly.
@@ -251,9 +274,13 @@ class RDFoxEndpoint:
         """
         if self.server is None:
             raise RuntimeError("Need to connect to server first")
+        fact_domain = (
+            "all" if self.rdfox_version and self.rdfox_version >= Version("7.0")
+            else "IDB"
+        )
         response = requests.get(
             f"{self.server}/datastores/default/content",
-            params={"fact-domain": "IDB"},
+            params={"fact-domain": fact_domain},
             headers={"accept": format},
         )
         logger.debug("Store contents response [%s]: %s", response.status_code, response.text)
